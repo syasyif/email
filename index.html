@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EMAIL QUEST: INBOX UNLOCKED!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow-x: hidden;
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: manipulation;
+        }
+        
+        /* Neon UI Elements */
+        .neon-border-cyan { border: 2px solid #06b6d4; box-shadow: 0 0 10px #06b6d4, inset 0 0 5px #06b6d4; }
+        .neon-border-pink { border: 2px solid #ec4899; box-shadow: 0 0 10px #ec4899; }
+        .neon-text-purple { color: #c084fc; text-shadow: 0 0 8px #c084fc; }
+        .neon-text-cyan { color: #22d3ee; text-shadow: 0 0 8px #22d3ee; }
+        
+        /* Interactive Buttons */
+        .game-btn {
+            transition: all 0.1s ease;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.4);
+        }
+        .game-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px 0 rgba(0,0,0,0.4);
+        }
+        
+        /* Tap-to-arrange tiles */
+        .tile {
+            transition: transform 0.15s ease, opacity 0.15s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        .tile:active { transform: scale(0.95); }
+        
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        /* Custom Scrollbar for writing box */
+        textarea::-webkit-scrollbar { width: 8px; }
+        textarea::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        textarea::-webkit-scrollbar-thumb { background: #06b6d4; border-radius: 4px; }
+        
+        /* Checklist styles */
+        .custom-checkbox { width: 24px; height: 24px; accent-color: #ec4899; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- HUD (Hidden on start) -->
+    <div id="hud" class="fixed top-0 left-0 w-full p-4 flex justify-between items-center z-20 bg-slate-900/90 backdrop-blur-md border-b-2 border-cyan-500 hidden shadow-[0_0_15px_#06b6d4]">
+        <div>
+            <p id="level-display" class="text-xs font-bold text-fuchsia-400 uppercase tracking-wider">LEVEL 1: EMAIL BASICS</p>
+            <h1 class="text-lg font-black text-white">Q: <span id="q-counter">1/20</span></h1>
+        </div>
+        <div class="w-1/3">
+            <div class="h-3 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
+                <div id="progress-bar" class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="text-right">
+            <p class="text-xs font-bold text-slate-400">XP</p>
+            <h1 class="text-xl font-black text-amber-400 animate-pulse"><span id="xp-display">0</span></h1>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT AREA -->
+    <div id="main-container" class="flex-1 w-full max-w-2xl mx-auto pt-24 pb-8 px-4 flex flex-col justify-center">
+
+        <!-- WELCOME SCREEN -->
+        <div id="welcome-screen" class="flex flex-col items-center justify-center text-center animate-pop">
+            <div class="text-6xl mb-4 animate-float">📧🔓</div>
+            <h1 class="text-4xl md:text-5xl font-black mb-2 leading-tight neon-text-cyan">EMAIL QUEST:</h1>
+            <h2 class="text-2xl md:text-3xl font-extrabold mb-6 text-fuchsia-400">INBOX UNLOCKED!</h2>
+            
+            <div class="bg-slate-800 rounded-2xl p-6 border-2 border-slate-700 shadow-xl mb-8 text-left w-full max-w-md">
+                <p class="text-slate-300 mb-4 font-medium text-center italic">"Read, plan, and write like a pro!"</p>
+                <ul class="text-sm text-slate-300 space-y-2 mb-4">
+                    <li>✅ <strong>Level 1:</strong> Email Basics</li>
+                    <li>🔍 <strong>Level 2:</strong> Email Detective</li>
+                    <li>✍️ <strong>Level 3:</strong> Reply Master</li>
+                    <li>🏆 <strong>Level 4:</strong> Email Legend (Writing Tasks)</li>
+                </ul>
+                <p class="text-xs text-slate-400 text-center">For Malaysian Form 2 KSSM</p>
+            </div>
+            
+            <button id="start-btn" class="game-btn w-full max-w-md bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black text-xl py-4 rounded-2xl">
+                START QUEST 🚀
+            </button>
+        </div>
+
+        <!-- GAMEPLAY SCREEN -->
+        <div id="game-screen" class="hidden flex-col w-full animate-pop">
+            <!-- Dynamic Content Area -->
+            <div id="question-container" class="bg-slate-800 rounded-3xl p-5 md:p-8 border-2 border-slate-700 shadow-xl mb-6 relative">
+                <!-- Question content injected here via JS -->
+            </div>
+        </div>
+
+        <!-- WRITING FEEDBACK / CHECKLIST SCREEN -->
+        <div id="writing-review-screen" class="hidden flex-col w-full animate-pop bg-slate-800 rounded-3xl p-5 border-2 border-pink-500 shadow-[0_0_15px_#ec4899] mb-6">
+            <h2 class="text-2xl font-black text-pink-400 mb-4">Self-Assessment Checklist</h2>
+            <p class="text-sm text-slate-300 mb-4">Before checking the model answer, be a teacher! Did your email have these?</p>
+            
+            <div class="space-y-3 mb-6 bg-slate-900 p-4 rounded-xl">
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" class="custom-checkbox review-cb">
+                    <span class="text-sm font-semibold">I answered all the questions from the prompt.</span>
+                </label>
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" class="custom-checkbox review-cb">
+                    <span class="text-sm font-semibold">I used an appropriate greeting (e.g. Hi Amin,).</span>
+                </label>
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" class="custom-checkbox review-cb">
+                    <span class="text-sm font-semibold">I elaborated with reasons or examples.</span>
+                </label>
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" class="custom-checkbox review-cb">
+                    <span class="text-sm font-semibold">I checked my spelling and grammar.</span>
+                </label>
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" class="custom-checkbox review-cb">
+                    <span class="text-sm font-semibold">I signed off correctly (e.g. Best wishes,).</span>
+                </label>
+            </div>
+
+            <button id="show-model-btn" class="game-btn w-full bg-pink-500 text-white font-black py-4 rounded-xl text-lg mb-4">
+                CLAIM XP & SHOW MODEL ANSWER
+            </button>
+            
+            <div id="model-answer-box" class="hidden">
+                <h3 class="text-lg font-bold text-cyan-400 mb-2">Model Answer:</h3>
+                <div class="bg-slate-700 p-4 rounded-xl text-sm leading-relaxed whitespace-pre-wrap font-medium border border-slate-600 text-white mb-6" id="model-answer-text"></div>
+                
+                <button id="next-from-writing-btn" class="game-btn w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black py-4 rounded-xl text-lg">
+                    CONTINUE ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- RESULTS SCREEN -->
+        <div id="result-screen" class="hidden flex-col items-center justify-center text-center animate-pop pt-10">
+            <h1 class="text-4xl font-black mb-2 neon-text-cyan">QUEST COMPLETE!</h1>
+            <div class="text-7xl mb-6">🏆</div>
+            
+            <div class="w-full bg-slate-800 rounded-3xl p-6 border-4 border-fuchsia-500 shadow-[0_0_20px_#d946ef] mb-6">
+                <p class="text-slate-300 font-bold mb-2 uppercase tracking-wider text-sm">Total XP Earned</p>
+                <h2 class="text-5xl font-black text-amber-400 mb-6" id="final-xp">0</h2>
+                
+                <div class="bg-slate-900 rounded-xl p-4 mb-4 text-left">
+                    <h3 class="font-bold text-cyan-400 mb-2 border-b border-slate-700 pb-2">Your Badges:</h3>
+                    <div id="badges-container" class="flex flex-wrap gap-2 text-2xl">
+                        <!-- Badges injected here -->
+                    </div>
+                </div>
+                
+                <div class="text-left text-sm text-slate-300 space-y-2">
+                    <p>✅ Excellent grasp of email basics.</p>
+                    <p>✅ Good job elaborating main ideas.</p>
+                    <p>🎯 <strong>Next Step:</strong> Keep practicing linking words (because, so, although) in your daily writing!</p>
+                </div>
+            </div>
+            
+            <button id="replay-btn" class="game-btn w-full bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white font-black text-xl py-4 rounded-2xl">
+                PLAY AGAIN 🔄
+            </button>
+        </div>
+
+    </div>
+
+    <!-- FEEDBACK OVERLAY -->
+    <div id="feedback-overlay" class="fixed inset-0 bg-slate-900/95 z-50 flex flex-col items-center justify-center p-6 hidden">
+        <div id="feedback-card" class="w-full max-w-sm bg-slate-800 rounded-3xl p-6 text-center transform scale-90 transition-transform duration-300">
+            <div id="feedback-icon" class="text-6xl mb-4">✅</div>
+            <h2 id="feedback-title" class="text-3xl font-black mb-2 text-white">NICE!</h2>
+            <p id="feedback-text" class="text-slate-300 mb-6 font-medium leading-relaxed"></p>
+            <p id="feedback-xp" class="text-amber-400 font-black text-xl mb-6">+50 XP</p>
+            <button id="feedback-next-btn" class="game-btn w-full text-white font-black py-4 rounded-xl text-lg">
+                NEXT
+            </button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        // --- GAME DATA ---
+        // 20 Questions split into 4 levels
+        const QUESTIONS = [
+            // LEVEL 1: EMAIL BASICS
+            {
+                level: 1, title: "LEVEL 1: EMAIL BASICS", type: "mcq",
+                question: "Which of these is the BEST opening greeting for an informal email to your friend Hakim?",
+                options: ["Dear Sir/Madam,", "Hi Hakim,", "To Whom It May Concern,"],
+                answer: 1,
+                feedback: "Correct! 'Hi Hakim,' is friendly and casual. The others are for formal letters."
+            },
+            {
+                level: 1, title: "LEVEL 1: EMAIL BASICS", type: "mcq",
+                question: "How should you start the first paragraph after saying 'Hi'?",
+                options: ["I am writing to inform you...", "Thanks for your email. How are you?", "Goodbye, see you soon."],
+                answer: 1,
+                feedback: "Spot on! Asking how they are or thanking them for a previous email is a polite informal opening."
+            },
+            {
+                level: 1, title: "LEVEL 1: EMAIL BASICS", type: "order",
+                question: "Tap the parts to arrange them in the correct email order:",
+                pieces: ["Sign-off & Name", "Closing sentence (Hope to hear from you soon)", "Main message (Answering the questions)", "Greeting (Hi Sarah,)", "Opening (How are you?)"],
+                answer: ["Greeting (Hi Sarah,)", "Opening (How are you?)", "Main message (Answering the questions)", "Closing sentence (Hope to hear from you soon)", "Sign-off & Name"],
+                feedback: "Perfect! That is the exact structure of a complete informal email."
+            },
+            {
+                level: 1, title: "LEVEL 1: EMAIL BASICS", type: "mcq",
+                question: "Which of these is a suitable sign-off for a close friend?",
+                options: ["Yours sincerely,", "Best wishes,", "Yours faithfully,"],
+                answer: 1,
+                feedback: "'Best wishes,' or 'Warm regards,' or 'Bye for now,' are perfect for informal emails."
+            },
+            {
+                level: 1, title: "LEVEL 1: EMAIL BASICS", type: "mcq",
+                question: "Read the prompt: 'Tell your friend what you did during the school holidays.' Which sentence belongs in the Main Message?",
+                options: ["I hope you are doing well.", "I went to Penang with my family and ate delicious Nasi Kandar.", "That's all from me. Write back soon."],
+                answer: 1,
+                feedback: "Yes! That sentence directly answers the prompt with good elaboration."
+            },
+
+            // LEVEL 2: EMAIL DETECTIVE
+            {
+                level: 2, title: "LEVEL 2: EMAIL DETECTIVE", type: "mcq",
+                question: "Find the grammatical mistake in this sentence: 'I going to the park tomorrow.'",
+                options: ["Change 'tomorrow' to 'yesterday'.", "Change 'going' to 'am going'.", "Change 'park' to 'parks'."],
+                answer: 1,
+                feedback: "Good detective work! You need the verb 'to be' for Present Continuous: 'I am going'."
+            },
+            {
+                level: 2, title: "LEVEL 2: EMAIL DETECTIVE", type: "mcq",
+                question: "Choose the correct linking word: 'I wanted to buy a new bicycle, _____ I didn't have enough money.'",
+                options: ["so", "because", "but"],
+                answer: 2,
+                feedback: "Correct! 'But' is used to show a contrast between wanting the bike and not having money."
+            },
+            {
+                level: 2, title: "LEVEL 2: EMAIL DETECTIVE", type: "order",
+                question: "Arrange these sentences to form a logical paragraph about a hobby:",
+                pieces: ["Then, I started practicing every weekend.", "Now, I am in the school badminton team!", "I first learned to play badminton when I was 10."],
+                answer: ["I first learned to play badminton when I was 10.", "Then, I started practicing every weekend.", "Now, I am in the school badminton team!"],
+                feedback: "Excellent! You used time sequence perfectly (First -> Then -> Now)."
+            },
+            {
+                level: 2, title: "LEVEL 2: EMAIL DETECTIVE", type: "mcq",
+                question: "Identify the tone. Is this sentence suitable for an email to a friend? 'Please be informed that I will arrive at 8.00 a.m.'",
+                options: ["Yes, it is very clear.", "No, it sounds too formal, like a business letter."],
+                answer: 1,
+                feedback: "Right! For a friend, you should just say: 'I'll be there at 8 a.m.!'."
+            },
+            {
+                level: 2, title: "LEVEL 2: EMAIL DETECTIVE", type: "mcq",
+                question: "Which of the following is a good reason to elaborate on why you like swimming?",
+                options: ["Because it is fun and keeps me healthy.", "Because I swim in a pool.", "Because water is wet."],
+                answer: 0,
+                feedback: "Great! 'Fun' and 'healthy' are solid, specific reasons that develop your idea."
+            },
+
+            // LEVEL 3: REPLY MASTER
+            {
+                level: 3, title: "LEVEL 3: REPLY MASTER", type: "mcq",
+                question: "Your friend asks: 'What should we bring for the class picnic?' Select the most relevant and elaborated reply.",
+                options: ["I like picnics very much.", "We should bring some sandwiches and a big bottle of orange juice.", "You must bring a dictionary."],
+                answer: 1,
+                feedback: "Spot on! You directly answered 'what' to bring and gave specific examples."
+            },
+            {
+                level: 3, title: "LEVEL 3: REPLY MASTER", type: "order",
+                question: "Your friend is stressed about exams. Tap to arrange your advice in order:",
+                pieces: ["First, you should make a study timetable.", "Don't worry too much about the exams.", "Also, remember to get enough sleep!"],
+                answer: ["Don't worry too much about the exams.", "First, you should make a study timetable.", "Also, remember to get enough sleep!"],
+                feedback: "Perfect! Reassure them first, then give step-by-step advice."
+            },
+            {
+                level: 3, title: "LEVEL 3: REPLY MASTER", type: "mcq",
+                question: "Friend: 'Would you like to join me for a movie on Saturday?' You can't go. Choose the most polite informal reply.",
+                options: ["No, I will not go with you.", "I'm so sorry, I can't make it because I have a family dinner.", "I am busy on Saturday."],
+                answer: 1,
+                feedback: "Correct! Apologizing and giving a reason ('family dinner') is the polite way to decline."
+            },
+            {
+                level: 3, title: "LEVEL 3: REPLY MASTER", type: "mcq",
+                question: "Friend: 'Which club should I join? The Science Club or the English Club?' How do you suggest the English Club with a reason?",
+                options: ["Join the English Club because we can practice speaking English together.", "Science Club is bad.", "I don't know, you choose."],
+                answer: 0,
+                feedback: "Yes! You made a clear choice and backed it up with a relevant reason."
+            },
+            {
+                level: 3, title: "LEVEL 3: REPLY MASTER", type: "order",
+                question: "Arrange this email closing properly:",
+                pieces: ["Your friend,", "I have to go now to do my homework.", "Ahmad", "I hope to see you at the party!"],
+                answer: ["I hope to see you at the party!", "I have to go now to do my homework.", "Your friend,", "Ahmad"],
+                feedback: "Nice! Closing thought -> Excuse to leave -> Sign-off -> Name."
+            },
+
+            // LEVEL 4: EMAIL LEGEND (WRITING)
+            {
+                level: 4, title: "LEVEL 4: EMAIL LEGEND", type: "writing",
+                question: "Read the email from Amir. Write a reply (about 80 words).<br><br><strong>From: Amir</strong><br><em>Hi! Our school is organising a gotong-royong this Saturday. Are you joining? What should we bring? Also, what job do you want to do there?</em>",
+                model: "To: amir@email.com\nSubject: Re: School Gotong-royong!\n\nHi Amir,\n\nThanks for your email. Yes, I am definitely joining the gotong-royong this Saturday!\n\nI think we should bring some rubbish bags, gloves, and a broom. We should also bring drinking water because it will be hot. For the job, I would like to help sweep the school field and collect the dry leaves. I enjoy working outdoors.\n\nI have to go now. See you on Saturday!\n\nBest wishes,\n[Your Name]"
+            },
+            {
+                level: 4, title: "LEVEL 4: EMAIL LEGEND", type: "writing",
+                question: "Read the email from Sarah. Write a reply (about 80 words).<br><br><strong>From: Sarah</strong><br><em>Hello! My family wants to visit Malaysia for a holiday. Should we visit Penang or Melaka? What is the best food to eat there? What activities can we do?</em>",
+                model: "To: sarah@email.com\nSubject: Holiday in Malaysia!\n\nHi Sarah,\n\nI am so glad your family is visiting Malaysia! I suggest you visit Penang because it has beautiful beaches and rich history.\n\nWhen you are there, you must try the famous Nasi Kandar and Char Kuey Teow. They are spicy but delicious! For activities, you can take a walk around George Town to see the street art, or take a funicular train up Penang Hill for a great view.\n\nHope this helps. Write back soon!\n\nRegards,\n[Your Name]"
+            },
+            {
+                level: 4, title: "LEVEL 4: EMAIL LEGEND", type: "writing",
+                question: "Read the email from John. Write a reply (about 80 words).<br><br><strong>From: John</strong><br><em>Hi! I want to start a new hobby to stay healthy. I am thinking of cycling. Do you think it's a good idea? Where is a good place to cycle, and who can I cycle with?</em>",
+                model: "To: john@email.com\nSubject: Re: Cycling Hobby\n\nHi John,\n\nHow are you? I think cycling is a fantastic idea! It is a great way to stay fit and it is good for your heart.\n\nA good place to cycle is the recreational park near our housing area. The tracks are safe and there are no cars. You can cycle with your brother or join the local cycling club on weekends. I would love to join you too sometimes!\n\nLet me know when you get your bike.\n\nBye for now,\n[Your Name]"
+            },
+            {
+                level: 4, title: "LEVEL 4: EMAIL LEGEND", type: "writing",
+                question: "Read the email from Mei. Write a reply (about 80 words).<br><br><strong>From: Mei</strong><br><em>Hi! I am feeling very stressed about our upcoming mid-term exams. I can't seem to focus. Do you have any tips on how to revise? How can I relax?</em>",
+                model: "To: mei@email.com\nSubject: Re: Exam Stress\n\nHi Mei,\n\nThanks for writing. Please don't worry too much about the exams, I know you will do great!\n\nTo help you revise, you should create a study timetable so you can study one subject at a time. Also, try making short, colourful notes. To relax, you must make sure you sleep for at least 8 hours a night. You can also listen to some calm music or go for a short walk in the evening.\n\nGood luck with your revision!\n\nWarm regards,\n[Your Name]"
+            },
+            {
+                level: 4, title: "LEVEL 4: EMAIL LEGEND", type: "writing",
+                question: "Read the email from your cousin, Lin. Write a reply (about 80 words).<br><br><strong>From: Lin</strong><br><em>Hi! I heard your school had a Sports Day last week. Which sports house won? Did you take part in any events? How did you feel at the end of the day?</em>",
+                model: "To: lin@email.com\nSubject: Re: School Sports Day\n\nHi Lin,\n\nIt is great to hear from you! Yes, my school Sports Day was last week and it was amazing. The Yellow House won the championship this year!\n\nI actually took part in the 100-metre sprint and the 4x100m relay. I managed to win a silver medal for the relay! At the end of the day, I felt completely exhausted but very proud and happy.\n\nTell me about your school soon.\n\nYour cousin,\n[Your Name]"
+            }
+        ];
+
+        // --- GAME STATE ---
+        let currentQIndex = 0;
+        let score = 0;
+        let xp = 0;
+        let badges = [];
+        let firstAttempt = true;
+        let orderSelection = []; // For order questions
+
+        // DOM Elements
+        const mainContainer = document.getElementById('main-container');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const questionContainer = document.getElementById('question-container');
+        const hud = document.getElementById('hud');
+        
+        const feedbackOverlay = document.getElementById('feedback-overlay');
+        const feedbackCard = document.getElementById('feedback-card');
+        const feedbackIcon = document.getElementById('feedback-icon');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const feedbackText = document.getElementById('feedback-text');
+        const feedbackXp = document.getElementById('feedback-xp');
+        const feedbackNextBtn = document.getElementById('feedback-next-btn');
+
+        const writingReviewScreen = document.getElementById('writing-review-screen');
+        const modelAnswerBox = document.getElementById('model-answer-box');
+        const showModelBtn = document.getElementById('show-model-btn');
+        const nextFromWritingBtn = document.getElementById('next-from-writing-btn');
+
+        // --- INITIALIZATION ---
+        document.getElementById('start-btn').addEventListener('click', () => {
+            welcomeScreen.classList.add('hidden');
+            hud.classList.remove('hidden');
+            gameScreen.classList.remove('hidden');
+            gameScreen.classList.add('flex');
+            loadQuestion();
+        });
+
+        function updateHUD() {
+            document.getElementById('q-counter').innerText = `${currentQIndex + 1}/${QUESTIONS.length}`;
+            document.getElementById('progress-bar').style.width = `${((currentQIndex) / QUESTIONS.length) * 100}%`;
+            document.getElementById('xp-display').innerText = xp;
+            
+            if(QUESTIONS[currentQIndex]) {
+                document.getElementById('level-display').innerText = QUESTIONS[currentQIndex].title;
+            }
+        }
+
+        function loadQuestion() {
+            if (currentQIndex >= QUESTIONS.length) {
+                showResults();
+                return;
+            }
+            
+            updateHUD();
+            const q = QUESTIONS[currentQIndex];
+            firstAttempt = true;
+            orderSelection = [];
+            
+            questionContainer.innerHTML = ''; // Clear container
+
+            // Build Question UI based on type
+            const qTitle = document.createElement('h2');
+            qTitle.className = "text-xl md:text-2xl font-bold text-white mb-6 leading-relaxed";
+            qTitle.innerHTML = q.question;
+            questionContainer.appendChild(qTitle);
+
+            if (q.type === 'mcq') {
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = "space-y-4";
+                q.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = "game-btn w-full bg-slate-700 text-left text-white font-semibold p-4 rounded-xl border-2 border-slate-600 hover:border-cyan-400 focus:outline-none";
+                    btn.innerHTML = opt;
+                    btn.onclick = () => checkMCQ(idx, btn);
+                    optionsDiv.appendChild(btn);
+                });
+                questionContainer.appendChild(optionsDiv);
+            } 
+            else if (q.type === 'order') {
+                const instruction = document.createElement('p');
+                instruction.className = "text-sm text-cyan-400 mb-2 font-semibold";
+                instruction.innerText = "Tap items from the bank to build the order:";
+                questionContainer.appendChild(instruction);
+
+                // Answer Area
+                const answerArea = document.createElement('div');
+                answerArea.id = "order-answer-area";
+                answerArea.className = "min-h-[100px] bg-slate-900 border-2 border-dashed border-slate-600 rounded-xl p-3 flex flex-col gap-2 mb-6";
+                questionContainer.appendChild(answerArea);
+
+                // Word Bank
+                const bankArea = document.createElement('div');
+                bankArea.id = "order-bank-area";
+                bankArea.className = "flex flex-wrap gap-2 mb-6";
+                
+                // Shuffle pieces for the bank
+                let shuffled = [...q.pieces].sort(() => Math.random() - 0.5);
+                shuffled.forEach((piece) => {
+                    const tile = document.createElement('div');
+                    tile.className = "tile bg-cyan-900 text-cyan-100 font-semibold py-2 px-4 rounded-lg border border-cyan-500 shadow-sm inline-block";
+                    tile.innerText = piece;
+                    tile.onclick = () => handleTileTap(tile, answerArea, bankArea);
+                    bankArea.appendChild(tile);
+                });
+                questionContainer.appendChild(bankArea);
+
+                // Submit Button
+                const submitBtn = document.createElement('button');
+                submitBtn.className = "game-btn w-full bg-cyan-500 text-slate-900 font-black py-4 rounded-xl text-lg";
+                submitBtn.innerText = "CHECK ORDER";
+                submitBtn.onclick = () => checkOrder();
+                questionContainer.appendChild(submitBtn);
+            }
+            else if (q.type === 'writing') {
+                const instruction = document.createElement('p');
+                instruction.className = "text-sm text-pink-400 mb-2 font-bold";
+                instruction.innerText = "Type your reply below (approx. 80 words):";
+                questionContainer.appendChild(instruction);
+
+                const textarea = document.createElement('textarea');
+                textarea.className = "w-full h-48 bg-slate-900 text-white font-medium p-4 rounded-xl border-2 border-slate-600 focus:border-pink-500 focus:outline-none resize-none mb-6";
+                textarea.placeholder = "To: ...\nSubject: ...\n\nHi...";
+                questionContainer.appendChild(textarea);
+
+                const submitBtn = document.createElement('button');
+                submitBtn.className = "game-btn w-full bg-pink-500 text-white font-black py-4 rounded-xl text-lg";
+                submitBtn.innerText = "SUBMIT EMAIL";
+                submitBtn.onclick = () => handleWritingSubmit(textarea.value);
+                questionContainer.appendChild(submitBtn);
+            }
+        }
+
+        // --- INTERACTION LOGIC ---
+
+        function checkMCQ(selectedIndex, btnElement) {
+            const q = QUESTIONS[currentQIndex];
+            if (selectedIndex === q.answer) {
+                btnElement.classList.remove('bg-slate-700', 'border-slate-600');
+                btnElement.classList.add('bg-green-600', 'border-green-400');
+                showFeedback(true, q.feedback);
+            } else {
+                btnElement.classList.remove('bg-slate-700', 'border-slate-600');
+                btnElement.classList.add('bg-red-600', 'border-red-400', 'opacity-50');
+                showFeedback(false, "Not quite! Try reading it again carefully.");
+            }
+        }
+
+        function handleTileTap(tile, answerArea, bankArea) {
+            if (tile.parentElement === bankArea) {
+                // Move to answer area
+                tile.classList.remove('bg-cyan-900', 'border-cyan-500', 'text-cyan-100', 'inline-block');
+                tile.classList.add('bg-indigo-600', 'border-indigo-400', 'text-white', 'w-full', 'block');
+                answerArea.appendChild(tile);
+            } else {
+                // Move back to bank
+                tile.classList.add('bg-cyan-900', 'border-cyan-500', 'text-cyan-100', 'inline-block');
+                tile.classList.remove('bg-indigo-600', 'border-indigo-400', 'text-white', 'w-full', 'block');
+                bankArea.appendChild(tile);
+            }
+        }
+
+        function checkOrder() {
+            const answerArea = document.getElementById('order-answer-area');
+            const userOrder = Array.from(answerArea.children).map(t => t.innerText);
+            const correctOrder = QUESTIONS[currentQIndex].answer;
+            const bankArea = document.getElementById('order-bank-area');
+
+            if (bankArea.children.length > 0) {
+                showFeedback(false, "You must use all the parts! Tap them to move them to the answer box.");
+                return;
+            }
+
+            let isCorrect = true;
+            for (let i = 0; i < correctOrder.length; i++) {
+                if (userOrder[i] !== correctOrder[i]) {
+                    isCorrect = false;
+                    break;
+                }
+            }
+
+            if (isCorrect) {
+                showFeedback(true, QUESTIONS[currentQIndex].feedback);
+            } else {
+                showFeedback(false, "The order isn't correct. Think about how an email flows logically. Try again!");
+                // Move tiles back
+                while (answerArea.firstChild) {
+                    let tile = answerArea.firstChild;
+                    tile.classList.add('bg-cyan-900', 'border-cyan-500', 'text-cyan-100', 'inline-block');
+                    tile.classList.remove('bg-indigo-600', 'border-indigo-400', 'text-white', 'w-full', 'block');
+                    bankArea.appendChild(tile);
+                }
+            }
+        }
+
+        function handleWritingSubmit(text) {
+            if (text.trim().length < 10) {
+                alert("Please write a complete email before submitting!");
+                return;
+            }
+            
+            // Hide game screen, show review screen
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex');
+            writingReviewScreen.classList.remove('hidden');
+            writingReviewScreen.classList.add('flex');
+            
+            // Reset review screen state
+            document.querySelectorAll('.review-cb').forEach(cb => cb.checked = false);
+            modelAnswerBox.classList.add('hidden');
+            showModelBtn.classList.remove('hidden');
+        }
+
+        // Checklist Button
+        showModelBtn.addEventListener('click', () => {
+            const checkedBoxes = document.querySelectorAll('.review-cb:checked').length;
+            if (checkedBoxes < 3) {
+                alert("Please review your email honestly and check the boxes before continuing!");
+                return;
+            }
+            
+            // Grant big XP for writing
+            awardXP(200);
+            
+            // Show model answer
+            showModelBtn.classList.add('hidden');
+            modelAnswerBox.classList.remove('hidden');
+            document.getElementById('model-answer-text').innerText = QUESTIONS[currentQIndex].model;
+        });
+
+        nextFromWritingBtn.addEventListener('click', () => {
+            writingReviewScreen.classList.add('hidden');
+            writingReviewScreen.classList.remove('flex');
+            gameScreen.classList.remove('hidden');
+            gameScreen.classList.add('flex');
+            
+            checkLevelBadges();
+            currentQIndex++;
+            loadQuestion();
+        });
+
+
+        // --- FEEDBACK & PROGRESSION ---
+
+        function showFeedback(isCorrect, text) {
+            feedbackOverlay.classList.remove('hidden');
+            
+            // Force reflow for animation
+            feedbackCard.classList.remove('scale-100');
+            void feedbackCard.offsetWidth;
+            feedbackCard.classList.add('scale-100');
+
+            feedbackText.innerText = text;
+
+            if (isCorrect) {
+                feedbackIcon.innerText = "✅";
+                feedbackTitle.innerText = "NICE!";
+                feedbackTitle.className = "text-3xl font-black mb-2 text-cyan-400";
+                
+                let gained = firstAttempt ? 50 : 25;
+                feedbackXp.innerText = `+${gained} XP`;
+                feedbackXp.classList.remove('hidden');
+                
+                // Add event listener to advance on next
+                feedbackNextBtn.onclick = () => {
+                    awardXP(gained);
+                    closeFeedback();
+                    checkLevelBadges();
+                    currentQIndex++;
+                    loadQuestion();
+                };
+            } else {
+                firstAttempt = false;
+                feedbackIcon.innerText = "❌";
+                feedbackTitle.innerText = "NOT QUITE!";
+                feedbackTitle.className = "text-3xl font-black mb-2 text-pink-500";
+                feedbackXp.classList.add('hidden');
+                
+                feedbackNextBtn.onclick = () => closeFeedback();
+            }
+        }
+
+        function closeFeedback() {
+            feedbackOverlay.classList.add('hidden');
+            feedbackCard.classList.remove('scale-100');
+        }
+
+        function awardXP(amount) {
+            xp += amount;
+            document.getElementById('xp-display').innerText = xp;
+            
+            // Pop effect on HUD
+            const xpEl = document.getElementById('xp-display');
+            xpEl.classList.remove('text-amber-400');
+            xpEl.classList.add('text-white', 'scale-150');
+            setTimeout(() => {
+                xpEl.classList.add('text-amber-400');
+                xpEl.classList.remove('text-white', 'scale-150');
+            }, 300);
+        }
+
+        function checkLevelBadges() {
+            // Level 1 complete (Q5)
+            if (currentQIndex === 4 && !badges.includes("Inbox Explorer")) badges.push("Inbox Explorer 🧭");
+            // Level 2 complete (Q10)
+            if (currentQIndex === 9 && !badges.includes("Grammar Guardian")) badges.push("Grammar Guardian 🛡️");
+            // Level 3 complete (Q15)
+            if (currentQIndex === 14 && !badges.includes("Idea Builder")) badges.push("Idea Builder 💡");
+            // Level 4 complete (Q20)
+            if (currentQIndex === 19 && !badges.includes("Email Champion")) badges.push("Email Champion 🏆");
+        }
+
+        // --- GAME OVER ---
+        function showResults() {
+            hud.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex');
+            
+            const resultScreen = document.getElementById('result-screen');
+            resultScreen.classList.remove('hidden');
+            resultScreen.classList.add('flex');
+
+            document.getElementById('final-xp').innerText = xp;
+            
+            const badgeContainer = document.getElementById('badges-container');
+            badgeContainer.innerHTML = '';
+            badges.forEach(b => {
+                const span = document.createElement('span');
+                span.className = "bg-slate-800 border border-fuchsia-500 text-fuchsia-300 text-sm font-bold px-3 py-1 rounded-full shadow-sm";
+                span.innerText = b;
+                badgeContainer.appendChild(span);
+            });
+        }
+
+        document.getElementById('replay-btn').addEventListener('click', () => {
+            currentQIndex = 0;
+            xp = 0;
+            badges = [];
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('flex');
+            welcomeScreen.classList.remove('hidden');
+        });
+
+    </script>
+</body>
+</html>
